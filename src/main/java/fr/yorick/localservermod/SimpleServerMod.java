@@ -55,6 +55,7 @@ import java.util.UUID;
 
 public class SimpleServerMod implements ModInitializer {
     public static final String MOD_ID = "local_server_mod";
+    private static final String CONFIG_DIR_NAME = "ChestLockSign";
     private static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
     private static final int OWNER_SIGN_WATCH_TICKS = 20 * 60 * 5;
     private static final int LOCKED_MESSAGE_COOLDOWN_TICKS = 10;
@@ -888,7 +889,7 @@ public class SimpleServerMod implements ModInitializer {
         }
 
         private static Path configDir() {
-            return FabricLoader.getInstance().getConfigDir().resolve(MOD_ID);
+            return FabricLoader.getInstance().getConfigDir().resolve(CONFIG_DIR_NAME);
         }
 
         private static void writeDefaultFile(Path path, String content) throws IOException {

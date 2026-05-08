@@ -28,9 +28,9 @@ Chest SignLock is a server-side Fabric mod for Minecraft 1.21.11. It lets player
 Messages are generated in the server config folder:
 
 ```text
-config/local_server_mod/messages.yml
-config/local_server_mod/messages/fr.yml
-config/local_server_mod/messages/en.yml
+config/ChestLockSign/messages.yml
+config/ChestLockSign/messages/fr.yml
+config/ChestLockSign/messages/en.yml
 ```
 
 Normal chat messages use the orange `[Chest SignLock]` prefix. Debug lines use `[Debug Signlock]`.
@@ -72,4 +72,4 @@ That script builds the mod and copies the jar to `../../mods`.
 
 ## Notes
 
-The mod id is still `local_server_mod` to keep existing config paths and stored sign attachments compatible with the current server.
+The mod id is still `local_server_mod` to keep existing stored sign attachments compatible with current worlds. The config folder is `ChestLockSign` for easier server administration.
