@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "id": "local_server_mod",
+  "version": "${version}",
+  "name": "Chest SignLock",
+  "description": "Server-side Fabric protection mod using signs to lock containers, doors and automation access.",
+  "authors": [
+    "Yorick"
+  ],
+  "environment": "server",
+  "entrypoints": {
+    "main": [
+      "fr.yorick.localservermod.SimpleServerMod"
+    ]
+  },
+  "mixins": [
+    "local_server_mod.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=0.18.3",
+    "minecraft": "~1.21.11",
+    "java": ">=21",
+    "fabric-api": "*"
+  }
+}

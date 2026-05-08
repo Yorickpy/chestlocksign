@@ -1,0 +1,8 @@
+*.bat text eol=crlf
+*.gradle text eol=lf
+*.java text eol=lf
+*.json text eol=lf
+*.md text eol=lf
+*.properties text eol=lf
+*.yml text eol=lf
+gradle/wrapper/gradle-wrapper.jar binary

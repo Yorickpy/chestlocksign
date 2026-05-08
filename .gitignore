@@ -1,0 +1,23 @@
+# Gradle
+.gradle/
+build/
+
+# Local Minecraft/Fabric runs
+run/
+logs/
+crash-reports/
+
+# IDEs
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local artifacts
+*.log
+*.tmp

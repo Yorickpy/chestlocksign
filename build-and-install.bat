@@ -1,0 +1,30 @@
+@echo off
+setlocal
+
+cd /d "%~dp0"
+
+set "JAVA_HOME=C:\Program Files\Eclipse Adoptium\jdk-21.0.5.11-hotspot"
+set "Path=%JAVA_HOME%\bin;%Path%"
+set "SERVER_MODS_DIR=..\..\mods"
+set "MOD_JAR=build\libs\local-server-mod-0.1.0.jar"
+
+call gradlew.bat build
+if errorlevel 1 (
+  echo.
+  echo Build echoue, installation annulee.
+  pause
+  exit /b 1
+)
+
+if not exist "%SERVER_MODS_DIR%" (
+  echo Dossier mods serveur introuvable: %SERVER_MODS_DIR%
+  pause
+  exit /b 1
+)
+
+copy /Y "%MOD_JAR%" "%SERVER_MODS_DIR%\"
+
+echo.
+echo Mod installe dans %SERVER_MODS_DIR%.
+echo Redemarre le serveur pour le charger.
+pause

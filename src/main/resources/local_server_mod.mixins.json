@@ -1,0 +1,14 @@
+{
+  "required": true,
+  "package": "fr.yorick.localservermod.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": [
+    "DoorBlockMixin",
+    "ExplosionImplMixin",
+    "HopperBlockEntityMixin",
+    "MoveItemsTaskMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
