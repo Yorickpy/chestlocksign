@@ -3,10 +3,12 @@ setlocal
 
 cd /d "%~dp0"
 
-set "JAVA_HOME=C:\Program Files\Eclipse Adoptium\jdk-21.0.5.11-hotspot"
-set "Path=%JAVA_HOME%\bin;%Path%"
 set "SERVER_MODS_DIR=..\..\mods"
 set "MOD_JAR=build\libs\local-server-mod-0.1.0.jar"
+
+if defined JAVA_HOME (
+  set "Path=%JAVA_HOME%\bin;%Path%"
+)
 
 call gradlew.bat build
 if errorlevel 1 (

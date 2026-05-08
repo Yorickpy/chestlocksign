@@ -835,13 +835,13 @@ public class SimpleServerMod implements ModInitializer {
         String ownerSignLocked,
         String chestBreakLocked
     ) {
-        private static final String DEFAULT_LANGUAGE = "fr";
+        private static final String DEFAULT_LANGUAGE = "en";
         private static final Map<String, String> FALLBACKS = Map.of(
-            "chest_locked", "Cette interaction est privee. Vous n'etes pas autorise a l'utiliser.",
-            "sign_locked", "Ce panneau protege un bloc prive. Vous n'etes pas autorise a le modifier.",
-            "cannot_place_sign", "Je peux pas poser de panneau ici sans detruire de block :(",
-            "owner_sign_locked", "Le nom du proprietaire ne peut pas etre modifie afin d'eviter de bloquer l'acces.",
-            "chest_break_locked", "Ce bloc est verrouille. Retirez les panneaux prives avant de le casser."
+            "chest_locked", "This interaction is private. You are not allowed to use it.",
+            "sign_locked", "This sign protects a private block. You are not allowed to edit it.",
+            "cannot_place_sign", "A sign cannot be placed here without breaking a block.",
+            "owner_sign_locked", "The owner name cannot be changed to prevent locking yourself out.",
+            "chest_break_locked", "This block is locked. Remove the private signs before breaking it."
         );
 
         private static Messages load() {
@@ -931,7 +931,7 @@ public class SimpleServerMod implements ModInitializer {
         private static String defaultConfig() {
             return """
                 # Available languages: fr, en
-                language: fr
+                language: en
                 """;
         }
 
