@@ -2,6 +2,8 @@
 
 Chest SignLock is a server-side Fabric mod for Minecraft 1.21.11. It lets players lock containers and doors with signs, using a familiar `[Private]` / `[More Users]` format.
 
+This mod is heavily inspired by the Spigot plugin [BlockLocker](https://www.spigotmc.org/resources/blocklocker.3268/).
+
 ## Features
 
 - Lockable blocks: chests, trapped chests, barrels, shulker boxes, dispensers, droppers, furnaces, blast furnaces, smokers, lecterns and all doors.
@@ -34,6 +36,14 @@ config/ChestLockSign/messages/en.yml
 ```
 
 Normal chat messages use the orange `[Chest SignLock]` prefix. Debug lines use `[Debug Signlock]`.
+
+## Support
+
+For help, questions or bug reports, you can join the support Discord:
+
+https://discord.gg/9uWSkXJUfc
+
+The mod is planned to receive updates over time. I will try to update and maintain it as often as possible.
 
 ## Build
 
