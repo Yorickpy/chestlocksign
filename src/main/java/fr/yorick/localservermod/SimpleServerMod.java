@@ -434,6 +434,7 @@ public class SimpleServerMod implements ModInitializer {
             || state.isOf(Blocks.BLAST_FURNACE)
             || state.isOf(Blocks.SMOKER)
             || state.isOf(Blocks.LECTERN)
+            || state.isOf(Blocks.BEACON)
             || state.getBlock() instanceof DoorBlock;
     }
 

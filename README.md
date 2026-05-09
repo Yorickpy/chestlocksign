@@ -4,7 +4,7 @@ Chest SignLock is a server-side Fabric mod for Minecraft 1.21.11. It lets player
 
 ## Features
 
-- Lockable blocks: chests, trapped chests, barrels, shulker boxes, dispensers, droppers, furnaces, blast furnaces, smokers, lecterns and all doors.
+- Lockable blocks: chests, trapped chests, barrels, shulker boxes, dispensers, droppers, furnaces, blast furnaces, smokers, lecterns, beacons and all doors.
 - Right-click a lockable block with a sign while not sneaking to create a protection sign automatically.
 - First sign uses `[Private]` plus the owner name. Extra signs use `[More Users]` for additional allowed players.
 - Double chests and doors are protected as a single linked object.
