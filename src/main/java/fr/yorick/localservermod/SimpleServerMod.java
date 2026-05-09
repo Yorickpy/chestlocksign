@@ -16,12 +16,14 @@ import net.minecraft.block.DoorBlock;
 import net.minecraft.block.SignBlock;
 import net.minecraft.block.ShulkerBoxBlock;
 import net.minecraft.block.WallSignBlock;
+import net.minecraft.block.Block;
 import net.minecraft.block.enums.ChestType;
 import net.minecraft.block.enums.DoubleBlockHalf;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.block.entity.SignBlockEntity;
 import net.minecraft.block.entity.SignText;
 import net.minecraft.item.ItemStack;
+import net.minecraft.item.BlockItem;
 import net.minecraft.item.SignItem;
 import net.minecraft.registry.RegistryKey;
 import net.minecraft.server.MinecraftServer;
@@ -168,7 +170,7 @@ public class SimpleServerMod implements ModInitializer {
                 return ActionResult.SUCCESS;
             }
 
-            if (serverPlayer.isSneaking() || !(heldStack.getItem() instanceof SignItem)) {
+            if (serverPlayer.isSneaking() || !(heldStack.getItem() instanceof SignItem signItem)) {
                 if (locked && debugLockedChest) {
                     sendChestOpenLog(serverPlayer, attachedSigns);
                 }
@@ -180,6 +182,7 @@ public class SimpleServerMod implements ModInitializer {
                 world,
                 targetPos,
                 hitResult.getSide(),
+                signItem,
                 locked
             );
             if (placement.placed()) {
@@ -242,6 +245,18 @@ public class SimpleServerMod implements ModInitializer {
         PlayerBlockBreakEvents.BEFORE.register((world, player, pos, state, blockEntity) -> {
             if (world.isClient()) {
                 return true;
+            }
+
+            if (isProtectedDoorSupport(world, pos)) {
+                if (player instanceof ServerPlayerEntity serverPlayer && canBypassLocks(serverPlayer)) {
+                    return true;
+                }
+
+                if (player instanceof ServerPlayerEntity serverPlayer) {
+                    sendLockedChestMessage(serverPlayer, messages.chestBreakLocked());
+                }
+
+                return false;
             }
 
             if (isLockableBlock(state) && isPrivateChest(getAttachedSigns(world, pos))) {
@@ -349,6 +364,10 @@ public class SimpleServerMod implements ModInitializer {
     public static boolean isExplosionProtected(World world, BlockPos pos) {
         BlockState state = world.getBlockState(pos);
 
+        if (isProtectedDoorSupport(world, pos)) {
+            return true;
+        }
+
         if (isLockableBlock(state)) {
             return isPrivateChest(getAttachedSigns(world, pos));
         }
@@ -431,6 +450,15 @@ public class SimpleServerMod implements ModInitializer {
         return isPrivateChest(signs) && !allowsRedstone(signs);
     }
 
+    private static boolean isProtectedDoorSupport(World world, BlockPos pos) {
+        BlockPos doorPos = pos.up();
+        BlockState doorState = world.getBlockState(doorPos);
+        return doorState.getBlock() instanceof DoorBlock
+            && doorState.contains(DoorBlock.HALF)
+            && doorState.get(DoorBlock.HALF) == DoubleBlockHalf.LOWER
+            && isPrivateChest(getAttachedSigns(world, doorPos));
+    }
+
     private static boolean isChest(BlockState state) {
         return state.isOf(Blocks.CHEST) || state.isOf(Blocks.TRAPPED_CHEST);
     }
@@ -465,10 +493,11 @@ public class SimpleServerMod implements ModInitializer {
         World world,
         BlockPos targetPos,
         Direction clickedSide,
+        SignItem signItem,
         boolean moreUsersSign
     ) {
         if (clickedSide == Direction.UP) {
-            return placeStandingPrivateSign(player, world, targetPos.up(), moreUsersSign);
+            return placeStandingPrivateSign(player, world, targetPos.up(), signItem, moreUsersSign);
         }
 
         if (!clickedSide.getAxis().isHorizontal()) {
@@ -480,7 +509,7 @@ public class SimpleServerMod implements ModInitializer {
             return PrivateSignPlacement.failed();
         }
 
-        BlockState signState = Blocks.OAK_WALL_SIGN.getDefaultState()
+        BlockState signState = getWallSignBlock(((BlockItem) signItem).getBlock()).getDefaultState()
             .with(WallSignBlock.FACING, clickedSide);
 
         if (!world.setBlockState(signPos, signState)) {
@@ -499,13 +528,14 @@ public class SimpleServerMod implements ModInitializer {
         ServerPlayerEntity player,
         World world,
         BlockPos signPos,
+        SignItem signItem,
         boolean moreUsersSign
     ) {
         if (!canPlaceWallSign(world, signPos)) {
             return PrivateSignPlacement.failed();
         }
 
-        BlockState signState = Blocks.OAK_SIGN.getDefaultState()
+        BlockState signState = ((BlockItem) signItem).getBlock().getDefaultState()
             .with(SignBlock.ROTATION, getStandingSignRotation(player));
 
         if (!world.setBlockState(signPos, signState)) {
@@ -518,6 +548,44 @@ public class SimpleServerMod implements ModInitializer {
         }
 
         return PrivateSignPlacement.placed(signPos);
+    }
+
+    private static Block getWallSignBlock(Block standingSignBlock) {
+        if (standingSignBlock == Blocks.SPRUCE_SIGN) {
+            return Blocks.SPRUCE_WALL_SIGN;
+        }
+        if (standingSignBlock == Blocks.BIRCH_SIGN) {
+            return Blocks.BIRCH_WALL_SIGN;
+        }
+        if (standingSignBlock == Blocks.ACACIA_SIGN) {
+            return Blocks.ACACIA_WALL_SIGN;
+        }
+        if (standingSignBlock == Blocks.CHERRY_SIGN) {
+            return Blocks.CHERRY_WALL_SIGN;
+        }
+        if (standingSignBlock == Blocks.JUNGLE_SIGN) {
+            return Blocks.JUNGLE_WALL_SIGN;
+        }
+        if (standingSignBlock == Blocks.DARK_OAK_SIGN) {
+            return Blocks.DARK_OAK_WALL_SIGN;
+        }
+        if (standingSignBlock == Blocks.PALE_OAK_SIGN) {
+            return Blocks.PALE_OAK_WALL_SIGN;
+        }
+        if (standingSignBlock == Blocks.MANGROVE_SIGN) {
+            return Blocks.MANGROVE_WALL_SIGN;
+        }
+        if (standingSignBlock == Blocks.BAMBOO_SIGN) {
+            return Blocks.BAMBOO_WALL_SIGN;
+        }
+        if (standingSignBlock == Blocks.CRIMSON_SIGN) {
+            return Blocks.CRIMSON_WALL_SIGN;
+        }
+        if (standingSignBlock == Blocks.WARPED_SIGN) {
+            return Blocks.WARPED_WALL_SIGN;
+        }
+
+        return Blocks.OAK_WALL_SIGN;
     }
 
     private static int getStandingSignRotation(ServerPlayerEntity player) {
