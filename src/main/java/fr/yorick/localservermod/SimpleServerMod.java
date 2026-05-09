@@ -271,8 +271,19 @@ public class SimpleServerMod implements ModInitializer {
                 attachedSigns = getAttachedSigns(world, attachedLockablePos);
             }
 
-            if ((player instanceof ServerPlayerEntity serverPlayer && canBypassLocks(serverPlayer))
-                || hasAccessToChest(attachedSigns, player)) {
+            if (player instanceof ServerPlayerEntity serverPlayer) {
+                if (canBypassLocks(serverPlayer)) {
+                    return true;
+                }
+
+                AttachedSignInfo ownerSign = getOwnerSign(attachedSigns);
+                if (ownerSign != null && ownerSign.pos().equals(pos) && !ownerSign.isOwner(serverPlayer)) {
+                    sendLockedChestMessage(serverPlayer, messages.signLocked());
+                    return false;
+                }
+            }
+
+            if (hasAccessToChest(attachedSigns, player)) {
                 return true;
             }
 
@@ -771,7 +782,10 @@ public class SimpleServerMod implements ModInitializer {
 
         private boolean hasPlayer(ServerPlayerEntity player) {
             String playerUuid = player.getUuid().toString();
-            boolean uuidMatches = userUuids.values().stream().anyMatch(playerUuid::equalsIgnoreCase);
+            boolean uuidMatches = userNames().stream()
+                .map(SimpleServerMod::normalizePlayerName)
+                .map(userUuids::get)
+                .anyMatch(uuid -> playerUuid.equalsIgnoreCase(uuid));
             return uuidMatches || hasPlayerName(player.getName().getString());
         }
 
@@ -788,7 +802,7 @@ public class SimpleServerMod implements ModInitializer {
 
         private boolean isOwner(ServerPlayerEntity player) {
             String ownerUuid = userUuids.get(normalizePlayerName(ownerName()));
-            return player.getUuid().toString().equalsIgnoreCase(ownerUuid)
+            return (ownerUuid != null && player.getUuid().toString().equalsIgnoreCase(ownerUuid))
                 || ownerName().equalsIgnoreCase(player.getName().getString());
         }
 
