@@ -281,9 +281,18 @@ public class SimpleServerMod implements ModInitializer {
                 return true;
             }
 
+            AttachedSignInfo brokenSign = getAttachedSignAt(attachedSigns, pos);
+            if (brokenSign == null || !brokenSign.canGrantAccess()) {
+                return true;
+            }
+
             if (player instanceof ServerPlayerEntity serverPlayer) {
                 hydrateSignUuidsForPlayer(world, attachedSigns, serverPlayer);
                 attachedSigns = getAttachedSigns(world, attachedLockablePos);
+                brokenSign = getAttachedSignAt(attachedSigns, pos);
+                if (brokenSign == null || !brokenSign.canGrantAccess()) {
+                    return true;
+                }
             }
 
             if (player instanceof ServerPlayerEntity serverPlayer) {
@@ -291,8 +300,7 @@ public class SimpleServerMod implements ModInitializer {
                     return true;
                 }
 
-                AttachedSignInfo ownerSign = getOwnerSign(attachedSigns);
-                if (ownerSign != null && ownerSign.pos().equals(pos) && !ownerSign.isOwner(serverPlayer)) {
+                if (brokenSign.isPrivate() && !brokenSign.isOwner(serverPlayer)) {
                     sendLockedChestMessage(serverPlayer, messages.signLocked());
                     return false;
                 }
@@ -739,6 +747,13 @@ public class SimpleServerMod implements ModInitializer {
     private static AttachedSignInfo getOwnerSign(List<AttachedSignInfo> signs) {
         return signs.stream()
             .filter(AttachedSignInfo::isPrivate)
+            .findFirst()
+            .orElse(null);
+    }
+
+    private static AttachedSignInfo getAttachedSignAt(List<AttachedSignInfo> signs, BlockPos pos) {
+        return signs.stream()
+            .filter(sign -> sign.pos().equals(pos))
             .findFirst()
             .orElse(null);
     }
