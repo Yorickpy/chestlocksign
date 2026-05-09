@@ -58,7 +58,7 @@ Build the mod:
 The jar is generated in:
 
 ```text
-build/libs/chest-locksign-0.1.0.jar
+build/libs/chest-locksign-0.1.1.jar
 ```
 
 For the local server workflow used during development:
