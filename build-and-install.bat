@@ -4,7 +4,7 @@ setlocal
 cd /d "%~dp0"
 
 set "SERVER_MODS_DIR=..\..\mods"
-set "MOD_JAR=build\libs\local-server-mod-0.1.0.jar"
+set "MOD_JAR=build\libs\chest-locksign-0.1.0.jar"
 
 if defined JAVA_HOME (
   set "Path=%JAVA_HOME%\bin;%Path%"
