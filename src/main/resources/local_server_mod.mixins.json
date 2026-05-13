@@ -6,7 +6,9 @@
     "DoorBlockMixin",
     "ExplosionImplMixin",
     "HopperBlockEntityMixin",
-    "MoveItemsTaskMixin"
+    "MoveItemsTaskMixin",
+    "PistonBlockMixin",
+    "PistonHandlerMixin"
   ],
   "injectors": {
     "defaultRequire": 1

@@ -386,6 +386,10 @@ public class SimpleServerMod implements ModInitializer {
         return attachedLockablePos != null && isPrivateChest(getAttachedSigns(world, attachedLockablePos));
     }
 
+    public static boolean isPistonProtected(World world, BlockPos pos) {
+        return isExplosionProtected(world, pos);
+    }
+
     public static boolean isAutomationProtectedInventory(World world, BlockPos pos) {
         BlockState state = world.getBlockState(pos);
         if (!isAutomationLockableInventory(state)) {
