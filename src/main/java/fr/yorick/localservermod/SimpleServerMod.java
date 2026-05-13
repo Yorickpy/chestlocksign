@@ -186,11 +186,7 @@ public class SimpleServerMod implements ModInitializer {
                 locked
             );
             if (placement.placed()) {
-                serverPlayer.sendMessage(Text.literal(
-                    "Panneau " + (locked ? "[More Users]" : "[Private]")
-                        + " cree en " + formatBlockPos(placement.signPos())
-                        + (locked ? "" : " pour " + serverPlayer.getName().getString())
-                ), false);
+                sendOptionalLockedChestMessage(serverPlayer, messages.signCreated());
                 consumeSignIfNeeded(serverPlayer, heldStack);
 
                 LOGGER.info(
@@ -206,6 +202,12 @@ public class SimpleServerMod implements ModInitializer {
             sendLockedChestMessage(serverPlayer, messages.cannotPlaceSign());
             return ActionResult.SUCCESS;
         });
+    }
+
+    private static void sendOptionalLockedChestMessage(ServerPlayerEntity player, String message) {
+        if (!message.isBlank()) {
+            sendLockedChestMessage(player, message);
+        }
     }
 
     private static void sendLockedChestMessage(ServerPlayerEntity player, String message) {
@@ -932,7 +934,8 @@ public class SimpleServerMod implements ModInitializer {
         String signLocked,
         String cannotPlaceSign,
         String ownerSignLocked,
-        String chestBreakLocked
+        String chestBreakLocked,
+        String signCreated
     ) {
         private static final String DEFAULT_LANGUAGE = "en";
         private static final Map<String, String> FALLBACKS = Map.of(
@@ -940,7 +943,6 @@ public class SimpleServerMod implements ModInitializer {
             "sign_locked", "This sign protects a private block. You are not allowed to edit it.",
             "cannot_place_sign", "A sign cannot be placed here without breaking a block.",
             "owner_sign_locked", "The owner name cannot be changed to prevent locking yourself out.",
-            "chest_break_locked", "This block is locked. Remove the private signs before breaking it."
         );
 
         private static Messages load() {
@@ -963,7 +965,8 @@ public class SimpleServerMod implements ModInitializer {
                     values.get("sign_locked"),
                     values.get("cannot_place_sign"),
                     values.get("owner_sign_locked"),
-                    values.get("chest_break_locked")
+                    values.get("chest_break_locked"),
+                    values.get("sign_created")
                 );
             } catch (IOException exception) {
                 LOGGER.warn("Impossible de charger les messages YAML, utilisation des messages par defaut.", exception);
@@ -972,7 +975,8 @@ public class SimpleServerMod implements ModInitializer {
                     FALLBACKS.get("sign_locked"),
                     FALLBACKS.get("cannot_place_sign"),
                     FALLBACKS.get("owner_sign_locked"),
-                    FALLBACKS.get("chest_break_locked")
+                    FALLBACKS.get("chest_break_locked"),
+                    FALLBACKS.get("sign_created")
                 );
             }
         }
@@ -1035,7 +1039,15 @@ public class SimpleServerMod implements ModInitializer {
         }
 
         private static String normalizeLanguage(String language) {
-            return "en".equalsIgnoreCase(language) ? "en" : DEFAULT_LANGUAGE;
+            if ("fr".equalsIgnoreCase(language)) {
+                return "fr";
+            }
+
+            if ("en".equalsIgnoreCase(language)) {
+                return "en";
+            }
+
+            return DEFAULT_LANGUAGE;
         }
 
         private static String frenchMessages() {
@@ -1045,6 +1057,7 @@ public class SimpleServerMod implements ModInitializer {
                 cannot_place_sign: "Impossible de poser un panneau ici sans casser un bloc."
                 owner_sign_locked: "Le nom du proprietaire ne peut pas etre modifie afin d'eviter de bloquer l'acces."
                 chest_break_locked: "Ce bloc est verrouille. Retirez les panneaux prives avant de le casser."
+                sign_created: "Panneau de protection cree."
                 """;
         }
 
@@ -1055,6 +1068,7 @@ public class SimpleServerMod implements ModInitializer {
                 cannot_place_sign: "A sign cannot be placed here without breaking a block."
                 owner_sign_locked: "The owner name cannot be changed to prevent locking yourself out."
                 chest_break_locked: "This block is locked. Remove the private signs before breaking it."
+                sign_created: "Protection sign created."
                 """;
         }
 
