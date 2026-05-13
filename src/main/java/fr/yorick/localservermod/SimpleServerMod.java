@@ -943,6 +943,8 @@ public class SimpleServerMod implements ModInitializer {
             "sign_locked", "This sign protects a private block. You are not allowed to edit it.",
             "cannot_place_sign", "A sign cannot be placed here without breaking a block.",
             "owner_sign_locked", "The owner name cannot be changed to prevent locking yourself out.",
+            "chest_break_locked", "This block is locked. Remove the private signs before breaking it.",
+            "sign_created", "Protection sign created."
         );
 
         private static Messages load() {
