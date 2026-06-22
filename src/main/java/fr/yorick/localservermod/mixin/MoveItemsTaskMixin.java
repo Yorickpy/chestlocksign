@@ -1,23 +1,24 @@
 package fr.yorick.localservermod.mixin;
 
 import fr.yorick.localservermod.SimpleServerMod;
-import net.minecraft.entity.ai.brain.task.MoveItemsTask;
-import net.minecraft.world.World;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.entity.ai.behavior.TransportItemsBetweenContainers;
+import net.minecraft.world.level.Level;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-@Mixin(MoveItemsTask.class)
+@Mixin(TransportItemsBetweenContainers.TransportItemTarget.class)
 public abstract class MoveItemsTaskMixin {
-    @Inject(method = "matchesStoragePredicate", at = @At("HEAD"), cancellable = true)
-    private void localServerMod$hidePrivateChestFromCopperGolem(
-        MoveItemsTask.Storage storage,
-        World world,
-        CallbackInfoReturnable<Boolean> cir
+    @Inject(method = "tryCreatePossibleTarget(Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/Level;)Lnet/minecraft/world/entity/ai/behavior/TransportItemsBetweenContainers$TransportItemTarget;", at = @At("HEAD"), cancellable = true)
+    private static void localServerMod$hidePrivateChestFromCopperGolem(
+        BlockPos pos,
+        Level world,
+        CallbackInfoReturnable<TransportItemsBetweenContainers.TransportItemTarget> cir
     ) {
-        if (SimpleServerMod.isAutomationProtectedInventory(world, storage.pos())) {
-            cir.setReturnValue(false);
+        if (SimpleServerMod.isAutomationProtectedInventory(world, pos)) {
+            cir.setReturnValue(null);
         }
     }
 }

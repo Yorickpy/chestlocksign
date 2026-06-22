@@ -9,37 +9,38 @@ import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
 import net.fabricmc.fabric.api.event.player.UseBlockCallback;
-import net.minecraft.block.BlockState;
-import net.minecraft.block.Blocks;
-import net.minecraft.block.ChestBlock;
-import net.minecraft.block.DoorBlock;
-import net.minecraft.block.SignBlock;
-import net.minecraft.block.ShulkerBoxBlock;
-import net.minecraft.block.WallSignBlock;
-import net.minecraft.block.Block;
-import net.minecraft.block.enums.ChestType;
-import net.minecraft.block.enums.DoubleBlockHalf;
-import net.minecraft.block.entity.BlockEntity;
-import net.minecraft.block.entity.SignBlockEntity;
-import net.minecraft.block.entity.SignText;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.BlockItem;
-import net.minecraft.item.SignItem;
-import net.minecraft.registry.RegistryKey;
+import net.minecraft.ChatFormatting;
+import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.commands.Commands;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.PlayerConfigEntry;
-import net.minecraft.server.command.CommandManager;
-import net.minecraft.server.command.ServerCommandSource;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.text.MutableText;
-import net.minecraft.text.Text;
-import net.minecraft.util.ActionResult;
-import net.minecraft.util.Formatting;
-import net.minecraft.util.Identifier;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Direction;
-import net.minecraft.world.World;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.BlockItem;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.SignItem;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.ChestBlock;
+import net.minecraft.world.level.block.DoorBlock;
+import net.minecraft.world.level.block.ShulkerBoxBlock;
+import net.minecraft.world.level.block.SignBlock;
+import net.minecraft.world.level.block.StandingSignBlock;
+import net.minecraft.world.level.block.WallSignBlock;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.entity.SignBlockEntity;
+import net.minecraft.world.level.block.entity.SignText;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.ChestType;
+import net.minecraft.world.level.block.state.properties.DoubleBlockHalf;
 import net.fabricmc.loader.api.FabricLoader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -64,7 +65,7 @@ public class SimpleServerMod implements ModInitializer {
     private static final String LEGACY_NAME_KEY = "n";
     private static final String LEGACY_UUID_KEY = "u";
     private static final AttachmentType<Map<String, String>> SIGN_USER_UUIDS = AttachmentRegistry.createPersistent(
-        Identifier.of(MOD_ID, "sign_user_uuids"),
+        Identifier.fromNamespaceAndPath(MOD_ID, "sign_user_uuids"),
         Codec.unboundedMap(Codec.STRING, Codec.STRING)
     );
     private static final List<OwnerSignWatch> ownerSignWatches = new ArrayList<>();
@@ -86,55 +87,55 @@ public class SimpleServerMod implements ModInitializer {
 
     private static void registerLanguageCommand() {
         CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) ->
-            dispatcher.register(CommandManager.literal("chestlocklang")
+            dispatcher.register(Commands.literal("chestlocklang")
                 .requires(SimpleServerMod::canUseLanguageCommand)
-                .then(CommandManager.literal("fr")
+                .then(Commands.literal("fr")
                     .executes(context -> setLanguage(context.getSource(), "fr")))
-                .then(CommandManager.literal("en")
+                .then(Commands.literal("en")
                     .executes(context -> setLanguage(context.getSource(), "en"))))
         );
     }
 
-    private static boolean canUseLanguageCommand(ServerCommandSource source) {
-        ServerPlayerEntity player = source.getPlayer();
+    private static boolean canUseLanguageCommand(CommandSourceStack source) {
+        ServerPlayer player = source.getPlayer();
         return player == null || canBypassLocks(player);
     }
 
-    private static boolean canBypassLocks(ServerPlayerEntity player) {
-        return player.getEntityWorld()
+    private static boolean canBypassLocks(ServerPlayer player) {
+        return player.level()
             .getServer()
-            .getPlayerManager()
-            .isOperator(new PlayerConfigEntry(player.getGameProfile()));
+            .getPlayerList()
+            .isOp(player.nameAndId());
     }
 
-    private static int setLanguage(ServerCommandSource source, String language) {
+    private static int setLanguage(CommandSourceStack source, String language) {
         try {
             Messages.setLanguage(language);
             messages = Messages.load();
-            source.sendFeedback(
-                () -> Text.literal("Chest SignLock language set to " + language + "."),
+            source.sendSuccess(
+                () -> Component.literal("Chest SignLock language set to " + language + "."),
                 true
             );
             return Command.SINGLE_SUCCESS;
         } catch (IOException exception) {
             LOGGER.warn("Impossible de changer la langue Chest SignLock.", exception);
-            source.sendError(Text.literal("Impossible de changer la langue Chest SignLock."));
+            source.sendFailure(Component.literal("Impossible de changer la langue Chest SignLock."));
             return 0;
         }
     }
 
     private static void registerDebugCommand() {
         CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) ->
-            dispatcher.register(CommandManager.literal("debuglockedchest")
+            dispatcher.register(Commands.literal("chestlockdebug")
                 .requires(SimpleServerMod::canUseLanguageCommand)
                 .executes(context -> toggleDebugMode(context.getSource())))
         );
     }
 
-    private static int toggleDebugMode(ServerCommandSource source) {
+    private static int toggleDebugMode(CommandSourceStack source) {
         debugLockedChest = !debugLockedChest;
-        source.sendFeedback(
-            () -> Text.literal("Debug Signlock mode is " + (debugLockedChest ? "ON" : "OFF") + "."),
+        source.sendSuccess(
+            () -> Component.literal("Debug Signlock mode is " + (debugLockedChest ? "ON" : "OFF") + "."),
             true
         );
         return Command.SINGLE_SUCCESS;
@@ -142,23 +143,23 @@ public class SimpleServerMod implements ModInitializer {
 
     private static void registerChestOpenDebugEvent() {
         UseBlockCallback.EVENT.register((player, world, hand, hitResult) -> {
-            if (world.isClient() || !(player instanceof ServerPlayerEntity serverPlayer)) {
-                return ActionResult.PASS;
+            if (world.isClientSide() || !(player instanceof ServerPlayer serverPlayer)) {
+                return InteractionResult.PASS;
             }
 
             BlockPos clickedPos = hitResult.getBlockPos();
             BlockState state = world.getBlockState(clickedPos);
-            ActionResult signProtectionResult = protectPrivateChestSign(serverPlayer, world, clickedPos, state);
-            if (signProtectionResult != ActionResult.PASS) {
+            InteractionResult signProtectionResult = protectPrivateChestSign(serverPlayer, world, clickedPos, state);
+            if (signProtectionResult != InteractionResult.PASS) {
                 return signProtectionResult;
             }
 
             BlockPos targetPos = clickedPos;
             if (!isLockableBlock(state)) {
-                return ActionResult.PASS;
+                return InteractionResult.PASS;
             }
 
-            ItemStack heldStack = serverPlayer.getStackInHand(hand);
+            ItemStack heldStack = serverPlayer.getItemInHand(hand);
             List<AttachedSignInfo> attachedSigns = getAttachedSigns(world, targetPos);
             hydrateSignUuidsForPlayer(world, attachedSigns, serverPlayer);
             attachedSigns = getAttachedSigns(world, targetPos);
@@ -167,21 +168,21 @@ public class SimpleServerMod implements ModInitializer {
 
             if (!authorized) {
                 sendLockedChestMessage(serverPlayer, messages.chestLocked());
-                return ActionResult.SUCCESS;
+                return InteractionResult.SUCCESS;
             }
 
-            if (serverPlayer.isSneaking() || !(heldStack.getItem() instanceof SignItem signItem)) {
+            if (serverPlayer.isShiftKeyDown() || !(heldStack.getItem() instanceof SignItem signItem)) {
                 if (locked && debugLockedChest) {
                     sendChestOpenLog(serverPlayer, attachedSigns);
                 }
-                return ActionResult.PASS;
+                return InteractionResult.PASS;
             }
 
             PrivateSignPlacement placement = placePrivateSign(
                 serverPlayer,
                 world,
                 targetPos,
-                hitResult.getSide(),
+                hitResult.getDirection(),
                 signItem,
                 locked
             );
@@ -196,47 +197,47 @@ public class SimpleServerMod implements ModInitializer {
                     placement.signPos()
                 );
 
-                return ActionResult.SUCCESS;
+                return InteractionResult.SUCCESS;
             }
 
             sendLockedChestMessage(serverPlayer, messages.cannotPlaceSign());
-            return ActionResult.SUCCESS;
+            return InteractionResult.SUCCESS;
         });
     }
 
-    private static void sendOptionalLockedChestMessage(ServerPlayerEntity player, String message) {
+    private static void sendOptionalLockedChestMessage(ServerPlayer player, String message) {
         if (!message.isBlank()) {
             sendLockedChestMessage(player, message);
         }
     }
 
-    private static void sendLockedChestMessage(ServerPlayerEntity player, String message) {
-        int currentTick = player.age;
-        Integer lastTick = lastLockedMessageTicks.get(player.getUuid());
+    private static void sendLockedChestMessage(ServerPlayer player, String message) {
+        int currentTick = player.tickCount;
+        Integer lastTick = lastLockedMessageTicks.get(player.getUUID());
         if (lastTick != null && currentTick - lastTick < LOCKED_MESSAGE_COOLDOWN_TICKS) {
             return;
         }
 
-        lastLockedMessageTicks.put(player.getUuid(), currentTick);
-        player.sendMessage(Text.literal("[Chest SignLock] " + message).formatted(Formatting.GOLD), false);
+        lastLockedMessageTicks.put(player.getUUID(), currentTick);
+        player.sendSystemMessage(Component.literal("[Chest SignLock] " + message).withStyle(ChatFormatting.GOLD), false);
     }
 
-    private static void sendChestOpenLog(ServerPlayerEntity player, List<AttachedSignInfo> attachedSigns) {
+    private static void sendChestOpenLog(ServerPlayer player, List<AttachedSignInfo> attachedSigns) {
         List<String> authorizedUsers = getAuthorizedUsers(attachedSigns);
-        MutableText opener = Text.literal(player.getName().getString()).formatted(Formatting.GOLD);
+        MutableComponent opener = Component.literal(player.getName().getString()).withStyle(ChatFormatting.GOLD);
 
-        player.sendMessage(Text.literal("[Debug Signlock] ")
-            .formatted(Formatting.DARK_GRAY)
-            .append(Text.literal("Coffre ouvert par ").formatted(Formatting.GRAY))
+        player.sendSystemMessage(Component.literal("[Debug Signlock] ")
+            .withStyle(ChatFormatting.DARK_GRAY)
+            .append(Component.literal("Coffre ouvert par ").withStyle(ChatFormatting.GRAY))
             .append(opener), false);
 
-        player.sendMessage(Text.literal("[Debug Signlock] ")
-            .formatted(Formatting.DARK_GRAY)
-            .append(Text.literal("Panneaux: ").formatted(Formatting.GRAY))
-            .append(Text.literal(String.valueOf(attachedSigns.size())).formatted(Formatting.AQUA))
-            .append(Text.literal(" | Utilisateurs autorises: ").formatted(Formatting.GRAY))
-            .append(Text.literal(authorizedUsers.isEmpty() ? "aucun" : String.join(", ", authorizedUsers))
-                .formatted(Formatting.GREEN)), false);
+        player.sendSystemMessage(Component.literal("[Debug Signlock] ")
+            .withStyle(ChatFormatting.DARK_GRAY)
+            .append(Component.literal("Panneaux: ").withStyle(ChatFormatting.GRAY))
+            .append(Component.literal(String.valueOf(attachedSigns.size())).withStyle(ChatFormatting.AQUA))
+            .append(Component.literal(" | Utilisateurs autorises: ").withStyle(ChatFormatting.GRAY))
+            .append(Component.literal(authorizedUsers.isEmpty() ? "aucun" : String.join(", ", authorizedUsers))
+                .withStyle(ChatFormatting.GREEN)), false);
     }
 
     private static void registerOwnerSignWatch() {
@@ -245,16 +246,16 @@ public class SimpleServerMod implements ModInitializer {
 
     private static void registerBlockBreakProtection() {
         PlayerBlockBreakEvents.BEFORE.register((world, player, pos, state, blockEntity) -> {
-            if (world.isClient()) {
+            if (world.isClientSide()) {
                 return true;
             }
 
             if (isProtectedDoorSupport(world, pos)) {
-                if (player instanceof ServerPlayerEntity serverPlayer && canBypassLocks(serverPlayer)) {
+                if (player instanceof ServerPlayer serverPlayer && canBypassLocks(serverPlayer)) {
                     return true;
                 }
 
-                if (player instanceof ServerPlayerEntity serverPlayer) {
+                if (player instanceof ServerPlayer serverPlayer) {
                     sendLockedChestMessage(serverPlayer, messages.chestBreakLocked());
                 }
 
@@ -262,7 +263,7 @@ public class SimpleServerMod implements ModInitializer {
             }
 
             if (isLockableBlock(state) && isPrivateChest(getAttachedSigns(world, pos))) {
-                if (player instanceof ServerPlayerEntity serverPlayer) {
+                if (player instanceof ServerPlayer serverPlayer) {
                     if (canBypassLocks(serverPlayer)) {
                         return true;
                     }
@@ -288,7 +289,7 @@ public class SimpleServerMod implements ModInitializer {
                 return true;
             }
 
-            if (player instanceof ServerPlayerEntity serverPlayer) {
+            if (player instanceof ServerPlayer serverPlayer) {
                 hydrateSignUuidsForPlayer(world, attachedSigns, serverPlayer);
                 attachedSigns = getAttachedSigns(world, attachedLockablePos);
                 brokenSign = getAttachedSignAt(attachedSigns, pos);
@@ -297,7 +298,7 @@ public class SimpleServerMod implements ModInitializer {
                 }
             }
 
-            if (player instanceof ServerPlayerEntity serverPlayer) {
+            if (player instanceof ServerPlayer serverPlayer) {
                 if (canBypassLocks(serverPlayer)) {
                     return true;
                 }
@@ -312,7 +313,7 @@ public class SimpleServerMod implements ModInitializer {
                 return true;
             }
 
-            if (player instanceof ServerPlayerEntity serverPlayer) {
+            if (player instanceof ServerPlayer serverPlayer) {
                 sendLockedChestMessage(serverPlayer, messages.signLocked());
             }
 
@@ -320,22 +321,22 @@ public class SimpleServerMod implements ModInitializer {
         });
     }
 
-    private static ActionResult protectPrivateChestSign(
-        ServerPlayerEntity player,
-        World world,
+    private static InteractionResult protectPrivateChestSign(
+        ServerPlayer player,
+        Level world,
         BlockPos signPos,
         BlockState signState
     ) {
         BlockPos attachedLockablePos = getLockablePosForAttachedSign(world, signPos, signState);
         if (attachedLockablePos == null) {
-            return ActionResult.PASS;
+            return InteractionResult.PASS;
         }
 
         List<AttachedSignInfo> attachedSigns = getAttachedSigns(world, attachedLockablePos);
         hydrateSignUuidsForPlayer(world, attachedSigns, player);
         attachedSigns = getAttachedSigns(world, attachedLockablePos);
         if (!isPrivateChest(attachedSigns)) {
-            return ActionResult.PASS;
+            return InteractionResult.PASS;
         }
 
         if (canBypassLocks(player) || hasAccessToChest(attachedSigns, player)) {
@@ -343,35 +344,35 @@ public class SimpleServerMod implements ModInitializer {
             if (!canBypassLocks(player) && ownerSign != null && ownerSign.pos().equals(signPos)) {
                 if (!ownerSign.isOwner(player)) {
                     sendLockedChestMessage(player, messages.ownerSignLocked());
-                    return ActionResult.SUCCESS;
+                    return InteractionResult.SUCCESS;
                 }
 
                 watchOwnerSign(player, world, signPos, ownerSign.ownerName());
-                return ActionResult.PASS;
+                return InteractionResult.PASS;
             }
 
-            return ActionResult.PASS;
+            return InteractionResult.PASS;
         }
 
         sendLockedChestMessage(player, messages.signLocked());
-        return ActionResult.SUCCESS;
+        return InteractionResult.SUCCESS;
     }
 
-    private static BlockPos getLockablePosForAttachedSign(World world, BlockPos signPos, BlockState signState) {
-        if (signState.getBlock() instanceof WallSignBlock && signState.contains(WallSignBlock.FACING)) {
-            BlockPos attachedPos = signPos.offset(signState.get(WallSignBlock.FACING).getOpposite());
+    private static BlockPos getLockablePosForAttachedSign(Level world, BlockPos signPos, BlockState signState) {
+        if (signState.getBlock() instanceof WallSignBlock && signState.hasProperty(WallSignBlock.FACING)) {
+            BlockPos attachedPos = signPos.relative(signState.getValue(WallSignBlock.FACING).getOpposite());
             return isLockableBlock(world.getBlockState(attachedPos)) ? attachedPos : null;
         }
 
         if (signState.getBlock() instanceof SignBlock) {
-            BlockPos belowPos = signPos.down();
+            BlockPos belowPos = signPos.below();
             return isLockableBlock(world.getBlockState(belowPos)) ? belowPos : null;
         }
 
         return null;
     }
 
-    public static boolean isExplosionProtected(World world, BlockPos pos) {
+    public static boolean isExplosionProtected(Level world, BlockPos pos) {
         BlockState state = world.getBlockState(pos);
 
         if (isProtectedDoorSupport(world, pos)) {
@@ -386,11 +387,11 @@ public class SimpleServerMod implements ModInitializer {
         return attachedLockablePos != null && isPrivateChest(getAttachedSigns(world, attachedLockablePos));
     }
 
-    public static boolean isPistonProtected(World world, BlockPos pos) {
+    public static boolean isPistonProtected(Level world, BlockPos pos) {
         return isExplosionProtected(world, pos);
     }
 
-    public static boolean isAutomationProtectedInventory(World world, BlockPos pos) {
+    public static boolean isAutomationProtectedInventory(Level world, BlockPos pos) {
         BlockState state = world.getBlockState(pos);
         if (!isAutomationLockableInventory(state)) {
             return false;
@@ -400,17 +401,17 @@ public class SimpleServerMod implements ModInitializer {
         return isPrivateChest(signs) && !allowsRedstone(signs);
     }
 
-    private static void watchOwnerSign(ServerPlayerEntity player, World world, BlockPos signPos, String ownerName) {
-        if (!(world instanceof ServerWorld serverWorld)) {
+    private static void watchOwnerSign(ServerPlayer player, Level world, BlockPos signPos, String ownerName) {
+        if (!(world instanceof ServerLevel serverWorld)) {
             return;
         }
 
-        OwnerSignKey key = new OwnerSignKey(serverWorld.getRegistryKey(), signPos);
+        OwnerSignKey key = new OwnerSignKey(serverWorld.dimension(), signPos);
         ownerSignWatches.removeIf(watch -> watch.key().equals(key));
         ownerSignWatches.add(new OwnerSignWatch(
             key,
             ownerName,
-            player.getUuid(),
+            player.getUUID(),
             player.getName().getString(),
             OWNER_SIGN_WATCH_TICKS
         ));
@@ -421,7 +422,7 @@ public class SimpleServerMod implements ModInitializer {
 
         while (iterator.hasNext()) {
             OwnerSignWatch watch = iterator.next();
-            ServerWorld world = server.getWorld(watch.key().worldKey());
+            ServerLevel world = server.getLevel(watch.key().worldKey());
             if (world == null || watch.remainingTicks() <= 0) {
                 iterator.remove();
                 continue;
@@ -441,12 +442,12 @@ public class SimpleServerMod implements ModInitializer {
 
             if (ownerChanged) {
                 SignText restoredText = text
-                    .withMessage(0, Text.literal("[Private]"))
-                    .withMessage(1, Text.literal(watch.ownerName()));
+                    .setMessage(0, Component.literal("[Private]"))
+                    .setMessage(1, Component.literal(watch.ownerName()));
 
                 signBlockEntity.setText(restoredText, true);
-                signBlockEntity.markDirty();
-                world.getChunkManager().markForUpdate(watch.key().pos());
+                signBlockEntity.setChanged();
+                world.getChunkSource().blockChanged(watch.key().pos());
 
             }
 
@@ -454,7 +455,7 @@ public class SimpleServerMod implements ModInitializer {
         }
     }
 
-    public static boolean isRedstoneProtectedBlock(World world, BlockPos pos) {
+    public static boolean isRedstoneProtectedBlock(Level world, BlockPos pos) {
         BlockState state = world.getBlockState(pos);
         if (!isLockableBlock(state)) {
             return false;
@@ -464,69 +465,69 @@ public class SimpleServerMod implements ModInitializer {
         return isPrivateChest(signs) && !allowsRedstone(signs);
     }
 
-    private static boolean isProtectedDoorSupport(World world, BlockPos pos) {
-        BlockPos doorPos = pos.up();
+    private static boolean isProtectedDoorSupport(Level world, BlockPos pos) {
+        BlockPos doorPos = pos.above();
         BlockState doorState = world.getBlockState(doorPos);
         return doorState.getBlock() instanceof DoorBlock
-            && doorState.contains(DoorBlock.HALF)
-            && doorState.get(DoorBlock.HALF) == DoubleBlockHalf.LOWER
+            && doorState.hasProperty(DoorBlock.HALF)
+            && doorState.getValue(DoorBlock.HALF) == DoubleBlockHalf.LOWER
             && isPrivateChest(getAttachedSigns(world, doorPos));
     }
 
     private static boolean isChest(BlockState state) {
-        return state.isOf(Blocks.CHEST) || state.isOf(Blocks.TRAPPED_CHEST);
+        return state.is(Blocks.CHEST) || state.is(Blocks.TRAPPED_CHEST);
     }
 
     private static boolean isLockableBlock(BlockState state) {
         return isChest(state)
-            || state.isOf(Blocks.BARREL)
+            || state.is(Blocks.BARREL)
             || state.getBlock() instanceof ShulkerBoxBlock
-            || state.isOf(Blocks.DISPENSER)
-            || state.isOf(Blocks.DROPPER)
-            || state.isOf(Blocks.FURNACE)
-            || state.isOf(Blocks.BLAST_FURNACE)
-            || state.isOf(Blocks.SMOKER)
-            || state.isOf(Blocks.LECTERN)
-            || state.isOf(Blocks.BEACON)
+            || state.is(Blocks.DISPENSER)
+            || state.is(Blocks.DROPPER)
+            || state.is(Blocks.FURNACE)
+            || state.is(Blocks.BLAST_FURNACE)
+            || state.is(Blocks.SMOKER)
+            || state.is(Blocks.LECTERN)
+            || state.is(Blocks.BEACON)
             || state.getBlock() instanceof DoorBlock;
     }
 
     private static boolean isAutomationLockableInventory(BlockState state) {
         return isChest(state)
-            || state.isOf(Blocks.BARREL)
+            || state.is(Blocks.BARREL)
             || state.getBlock() instanceof ShulkerBoxBlock
-            || state.isOf(Blocks.DISPENSER)
-            || state.isOf(Blocks.DROPPER)
-            || state.isOf(Blocks.FURNACE)
-            || state.isOf(Blocks.BLAST_FURNACE)
-            || state.isOf(Blocks.SMOKER);
+            || state.is(Blocks.DISPENSER)
+            || state.is(Blocks.DROPPER)
+            || state.is(Blocks.FURNACE)
+            || state.is(Blocks.BLAST_FURNACE)
+            || state.is(Blocks.SMOKER);
     }
 
     private static PrivateSignPlacement placePrivateSign(
-        ServerPlayerEntity player,
-        World world,
+        ServerPlayer player,
+        Level world,
         BlockPos targetPos,
         Direction clickedSide,
         SignItem signItem,
         boolean moreUsersSign
     ) {
         if (clickedSide == Direction.UP) {
-            return placeStandingPrivateSign(player, world, targetPos.up(), signItem, moreUsersSign);
+            return placeStandingPrivateSign(player, world, targetPos.above(), signItem, moreUsersSign);
         }
 
         if (!clickedSide.getAxis().isHorizontal()) {
             return PrivateSignPlacement.failed();
         }
 
-        BlockPos signPos = targetPos.offset(clickedSide);
+        BlockPos signPos = targetPos.relative(clickedSide);
         if (!canPlaceWallSign(world, signPos)) {
             return PrivateSignPlacement.failed();
         }
 
-        BlockState signState = getWallSignBlock(((BlockItem) signItem).getBlock()).getDefaultState()
-            .with(WallSignBlock.FACING, clickedSide);
+        BlockState signState = getWallSignBlock(((BlockItem) signItem).getBlock()).defaultBlockState()
+            .setValue(WallSignBlock.FACING, clickedSide);
 
-        if (!world.setBlockState(signPos, signState)) {
+        if (!world.setBlockAndUpdate(signPos, signState)) {
             return PrivateSignPlacement.failed();
         }
 
@@ -539,8 +540,8 @@ public class SimpleServerMod implements ModInitializer {
     }
 
     private static PrivateSignPlacement placeStandingPrivateSign(
-        ServerPlayerEntity player,
-        World world,
+        ServerPlayer player,
+        Level world,
         BlockPos signPos,
         SignItem signItem,
         boolean moreUsersSign
@@ -549,10 +550,10 @@ public class SimpleServerMod implements ModInitializer {
             return PrivateSignPlacement.failed();
         }
 
-        BlockState signState = ((BlockItem) signItem).getBlock().getDefaultState()
-            .with(SignBlock.ROTATION, getStandingSignRotation(player));
+        BlockState signState = ((BlockItem) signItem).getBlock().defaultBlockState()
+            .setValue(StandingSignBlock.ROTATION, getStandingSignRotation(player));
 
-        if (!world.setBlockState(signPos, signState)) {
+        if (!world.setBlockAndUpdate(signPos, signState)) {
             return PrivateSignPlacement.failed();
         }
 
@@ -602,44 +603,44 @@ public class SimpleServerMod implements ModInitializer {
         return Blocks.OAK_WALL_SIGN;
     }
 
-    private static int getStandingSignRotation(ServerPlayerEntity player) {
-        return Math.floorMod(Math.round(player.getYaw() * 16.0F / 360.0F) + 8, 16);
+    private static int getStandingSignRotation(ServerPlayer player) {
+        return Math.floorMod(Math.round(player.getYRot() * 16.0F / 360.0F) + 8, 16);
     }
 
     private static void writePrivateSignText(
-        ServerPlayerEntity player,
-        World world,
+        ServerPlayer player,
+        Level world,
         BlockPos signPos,
         SignBlockEntity signBlockEntity,
         boolean moreUsersSign
     ) {
         SignText text = new SignText()
-            .withMessage(0, Text.literal(moreUsersSign ? "[More Users]" : "[Private]"));
+            .setMessage(0, Component.literal(moreUsersSign ? "[More Users]" : "[Private]"));
 
         if (!moreUsersSign) {
-            text = text.withMessage(1, Text.literal(player.getName().getString()));
-            writeSignUserUuid(signBlockEntity, player.getName().getString(), player.getUuid());
+            text = text.setMessage(1, Component.literal(player.getName().getString()));
+            writeSignUserUuid(signBlockEntity, player.getName().getString(), player.getUUID());
         }
 
         signBlockEntity.setText(text, true);
-        signBlockEntity.markDirty();
+        signBlockEntity.setChanged();
 
-        if (world instanceof ServerWorld serverWorld) {
-            serverWorld.getChunkManager().markForUpdate(signPos);
+        if (world instanceof ServerLevel serverWorld) {
+            serverWorld.getChunkSource().blockChanged(signPos);
         }
     }
 
-    private static boolean canPlaceWallSign(World world, BlockPos signPos) {
-        return world.isAir(signPos);
+    private static boolean canPlaceWallSign(Level world, BlockPos signPos) {
+        return world.isEmptyBlock(signPos);
     }
 
-    private static void consumeSignIfNeeded(ServerPlayerEntity player, ItemStack heldStack) {
+    private static void consumeSignIfNeeded(ServerPlayer player, ItemStack heldStack) {
         if (!player.isCreative()) {
-            heldStack.decrement(1);
+            heldStack.shrink(1);
         }
     }
 
-    private static List<AttachedSignInfo> getAttachedSigns(World world, BlockPos lockablePos) {
+    private static List<AttachedSignInfo> getAttachedSigns(Level world, BlockPos lockablePos) {
         List<AttachedSignInfo> signs = new ArrayList<>();
 
         for (BlockPos partPos : getLockableParts(world, lockablePos)) {
@@ -649,21 +650,21 @@ public class SimpleServerMod implements ModInitializer {
         return signs;
     }
 
-    private static List<AttachedSignInfo> getAttachedSignsForSingleBlock(World world, BlockPos lockablePos) {
+    private static List<AttachedSignInfo> getAttachedSignsForSingleBlock(Level world, BlockPos lockablePos) {
         List<AttachedSignInfo> signs = new ArrayList<>();
 
-        for (Direction direction : Direction.Type.HORIZONTAL) {
-            BlockPos signPos = lockablePos.offset(direction);
+        for (Direction direction : Direction.Plane.HORIZONTAL) {
+            BlockPos signPos = lockablePos.relative(direction);
             BlockState signState = world.getBlockState(signPos);
 
             if (signState.getBlock() instanceof WallSignBlock
-                && signState.contains(WallSignBlock.FACING)
-                && signPos.offset(signState.get(WallSignBlock.FACING).getOpposite()).equals(lockablePos)) {
+                && signState.hasProperty(WallSignBlock.FACING)
+                && signPos.relative(signState.getValue(WallSignBlock.FACING).getOpposite()).equals(lockablePos)) {
                 signs.add(new AttachedSignInfo(signPos, readSignLines(world, signPos), readSignUserUuids(world, signPos)));
             }
         }
 
-        BlockPos topSignPos = lockablePos.up();
+        BlockPos topSignPos = lockablePos.above();
         BlockState topSignState = world.getBlockState(topSignPos);
         if (topSignState.getBlock() instanceof SignBlock) {
             signs.add(new AttachedSignInfo(topSignPos, readSignLines(world, topSignPos), readSignUserUuids(world, topSignPos)));
@@ -672,14 +673,14 @@ public class SimpleServerMod implements ModInitializer {
         return signs;
     }
 
-    private static List<BlockPos> getLockableParts(World world, BlockPos lockablePos) {
+    private static List<BlockPos> getLockableParts(Level world, BlockPos lockablePos) {
         BlockState state = world.getBlockState(lockablePos);
         if (!isChest(state)) {
-            if (state.getBlock() instanceof DoorBlock && state.contains(DoorBlock.HALF)) {
-                BlockPos lowerPos = state.get(DoorBlock.HALF) == DoubleBlockHalf.LOWER
+            if (state.getBlock() instanceof DoorBlock && state.hasProperty(DoorBlock.HALF)) {
+                BlockPos lowerPos = state.getValue(DoorBlock.HALF) == DoubleBlockHalf.LOWER
                     ? lockablePos
-                    : lockablePos.down();
-                BlockPos upperPos = lowerPos.up();
+                    : lockablePos.below();
+                BlockPos upperPos = lowerPos.above();
                 List<BlockPos> parts = new ArrayList<>();
                 if (world.getBlockState(lowerPos).getBlock() instanceof DoorBlock) {
                     parts.add(lowerPos);
@@ -696,9 +697,9 @@ public class SimpleServerMod implements ModInitializer {
         List<BlockPos> parts = new ArrayList<>();
         parts.add(lockablePos);
 
-        if (state.contains(ChestBlock.CHEST_TYPE)
-            && state.get(ChestBlock.CHEST_TYPE) != ChestType.SINGLE) {
-            BlockPos otherPart = ChestBlock.getPosInFrontOf(lockablePos, state);
+        if (state.hasProperty(ChestBlock.TYPE)
+            && state.getValue(ChestBlock.TYPE) != ChestType.SINGLE) {
+            BlockPos otherPart = ChestBlock.getConnectedBlockPos(lockablePos, state);
             if (isChest(world.getBlockState(otherPart))) {
                 parts.add(otherPart);
             }
@@ -715,14 +716,14 @@ public class SimpleServerMod implements ModInitializer {
         return signs.stream().anyMatch(AttachedSignInfo::allowsRedstone);
     }
 
-    private static boolean hasAccessToChest(List<AttachedSignInfo> signs, ServerPlayerEntity player) {
+    private static boolean hasAccessToChest(List<AttachedSignInfo> signs, ServerPlayer player) {
         return signs.stream()
             .filter(AttachedSignInfo::canGrantAccess)
             .anyMatch(sign -> sign.hasPlayer(player));
     }
 
-    private static boolean hasAccessToChest(List<AttachedSignInfo> signs, net.minecraft.entity.player.PlayerEntity player) {
-        if (player instanceof ServerPlayerEntity serverPlayer) {
+    private static boolean hasAccessToChest(List<AttachedSignInfo> signs, Player player) {
+        if (player instanceof ServerPlayer serverPlayer) {
             return hasAccessToChest(signs, serverPlayer);
         }
 
@@ -764,7 +765,7 @@ public class SimpleServerMod implements ModInitializer {
             .orElse(null);
     }
 
-    private static List<String> readSignLines(World world, BlockPos signPos) {
+    private static List<String> readSignLines(Level world, BlockPos signPos) {
         BlockEntity blockEntity = world.getBlockEntity(signPos);
         if (!(blockEntity instanceof SignBlockEntity signBlockEntity)) {
             return List.of();
@@ -776,14 +777,14 @@ public class SimpleServerMod implements ModInitializer {
     private static List<String> readSignLines(SignText signText) {
         List<String> lines = new ArrayList<>();
 
-        for (Text message : signText.getMessages(false)) {
+        for (Component message : signText.getMessages(false)) {
             lines.add(message.getString().trim());
         }
 
         return lines;
     }
 
-    private static Map<String, String> readSignUserUuids(World world, BlockPos signPos) {
+    private static Map<String, String> readSignUserUuids(Level world, BlockPos signPos) {
         BlockEntity blockEntity = world.getBlockEntity(signPos);
         if (!(blockEntity instanceof SignBlockEntity signBlockEntity)) {
             return Map.of();
@@ -793,9 +794,9 @@ public class SimpleServerMod implements ModInitializer {
     }
 
     private static void hydrateSignUuidsForPlayer(
-        World world,
+        Level world,
         List<AttachedSignInfo> signs,
-        ServerPlayerEntity player
+        ServerPlayer player
     ) {
         for (AttachedSignInfo sign : signs) {
             if (!sign.canGrantAccess() || !sign.hasPlayerName(player.getName().getString())) {
@@ -803,16 +804,16 @@ public class SimpleServerMod implements ModInitializer {
             }
 
             String key = normalizePlayerName(player.getName().getString());
-            if (player.getUuid().toString().equals(sign.userUuids().get(key))) {
+            if (player.getUUID().toString().equals(sign.userUuids().get(key))) {
                 continue;
             }
 
             BlockEntity blockEntity = world.getBlockEntity(sign.pos());
             if (blockEntity instanceof SignBlockEntity signBlockEntity) {
-                writeSignUserUuid(signBlockEntity, player.getName().getString(), player.getUuid());
+                writeSignUserUuid(signBlockEntity, player.getName().getString(), player.getUUID());
 
-                if (world instanceof ServerWorld serverWorld) {
-                    serverWorld.getChunkManager().markForUpdate(sign.pos());
+                if (world instanceof ServerLevel serverWorld) {
+                    serverWorld.getChunkSource().blockChanged(sign.pos());
                 }
             }
         }
@@ -824,7 +825,7 @@ public class SimpleServerMod implements ModInitializer {
         userUuids.remove(LEGACY_UUID_KEY);
         userUuids.put(normalizePlayerName(playerName), playerUuid.toString());
         signBlockEntity.setAttached(SIGN_USER_UUIDS, userUuids);
-        signBlockEntity.markDirty();
+        signBlockEntity.setChanged();
     }
 
     private static Map<String, String> sanitizeSignUserUuids(Map<String, String> userUuids) {
@@ -869,8 +870,8 @@ public class SimpleServerMod implements ModInitializer {
                 .anyMatch(line -> line.equalsIgnoreCase(playerName));
         }
 
-        private boolean hasPlayer(ServerPlayerEntity player) {
-            String playerUuid = player.getUuid().toString();
+        private boolean hasPlayer(ServerPlayer player) {
+            String playerUuid = player.getUUID().toString();
             boolean uuidMatches = userNames().stream()
                 .map(SimpleServerMod::normalizePlayerName)
                 .map(userUuids::get)
@@ -889,9 +890,9 @@ public class SimpleServerMod implements ModInitializer {
             return lines.size() >= 2 ? lines.get(1) : "";
         }
 
-        private boolean isOwner(ServerPlayerEntity player) {
+        private boolean isOwner(ServerPlayer player) {
             String ownerUuid = userUuids.get(normalizePlayerName(ownerName()));
-            return (ownerUuid != null && player.getUuid().toString().equalsIgnoreCase(ownerUuid))
+            return (ownerUuid != null && player.getUUID().toString().equalsIgnoreCase(ownerUuid))
                 || ownerName().equalsIgnoreCase(player.getName().getString());
         }
 
@@ -908,11 +909,11 @@ public class SimpleServerMod implements ModInitializer {
         }
 
         private static PrivateSignPlacement failed() {
-            return new PrivateSignPlacement(false, BlockPos.ORIGIN);
+            return new PrivateSignPlacement(false, BlockPos.ZERO);
         }
     }
 
-    private record OwnerSignKey(RegistryKey<World> worldKey, BlockPos pos) {
+    private record OwnerSignKey(ResourceKey<Level> worldKey, BlockPos pos) {
     }
 
     private record OwnerSignWatch(
