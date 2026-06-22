@@ -4,7 +4,7 @@ setlocal
 cd /d "%~dp0"
 
 set "SERVER_MODS_DIR=..\..\mods"
-set "MOD_JAR=build\libs\chest-locksign-0.1.1.jar"
+set "MOD_JAR=build\libs\chest-locksign-0.2.0.jar"
 
 if not defined JAVA_HOME (
   set "JAVA_HOME=%USERPROFILE%\.jdks\temurin-25"
