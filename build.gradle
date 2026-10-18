@@ -1,5 +1,5 @@
 plugins {
-    id 'net.fabricmc.fabric-loom' version '1.17.12'
+    id 'net.fabricmc.fabric-loom' version "${loom_version}"
 }
 
 version = project.mod_version
@@ -16,10 +16,11 @@ dependencies {
 }
 
 processResources {
-    inputs.property 'version', project.version
+    def modVersion = project.version
+    inputs.property 'version', modVersion
 
     filesMatching('fabric.mod.json') {
-        expand 'version': project.version
+        expand 'version': modVersion
     }
 }
 

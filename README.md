@@ -1,6 +1,6 @@
 # Chest SignLock
 
-Chest SignLock is a server-side Fabric mod for Minecraft 26.2. It lets players lock containers and doors with signs, using a familiar `[Private]` / `[More Users]` format.
+Chest SignLock is a server-side Fabric mod for Minecraft 26.3. It lets players lock containers and doors with signs, using a familiar `[Private]` / `[More Users]` format.
 
 ## Features
 
@@ -58,7 +58,7 @@ Build the mod:
 The jar is generated in:
 
 ```text
-build/libs/chest-locksign-0.2.0.jar
+build/libs/chest-locksign-0.2.1.jar
 ```
 
 For the local server workflow used during development:
@@ -76,7 +76,7 @@ That script builds the mod and copies the jar to `../../mods`.
 - `src/main/resources/fabric.mod.json`: Fabric metadata.
 - `src/main/resources/local_server_mod.mixins.json`: mixin configuration.
 - `build.gradle`: Gradle/Fabric Loom build.
-- `gradle.properties`: Minecraft, Yarn, Loader, Fabric API and mod versions.
+- `gradle.properties`: Minecraft, Loom, Loader, Fabric API and mod versions.
 
 ## Notes
 

@@ -25,7 +25,6 @@ import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.SignItem;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
@@ -38,6 +37,7 @@ import net.minecraft.world.level.block.WallSignBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.SignBlockEntity;
 import net.minecraft.world.level.block.entity.SignText;
+import net.minecraft.world.level.block.entity.SignTextSlot;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.ChestType;
 import net.minecraft.world.level.block.state.properties.DoubleBlockHalf;
@@ -171,7 +171,9 @@ public class SimpleServerMod implements ModInitializer {
                 return InteractionResult.SUCCESS;
             }
 
-            if (serverPlayer.isShiftKeyDown() || !(heldStack.getItem() instanceof SignItem signItem)) {
+            if (serverPlayer.isShiftKeyDown()
+                || !(heldStack.getItem() instanceof BlockItem signItem)
+                || !(signItem.getBlock() instanceof StandingSignBlock)) {
                 if (locked && debugLockedChest) {
                     sendChestOpenLog(serverPlayer, attachedSigns);
                 }
@@ -434,18 +436,19 @@ public class SimpleServerMod implements ModInitializer {
                 continue;
             }
 
-            SignText text = signBlockEntity.getFrontText();
+            SignText text = signBlockEntity.getText(SignTextSlot.FRONT);
             List<String> lines = readSignLines(text);
             boolean ownerChanged = lines.size() < 2
                 || !"[private]".equalsIgnoreCase(lines.get(0))
                 || !watch.ownerName().equalsIgnoreCase(lines.get(1));
 
             if (ownerChanged) {
-                SignText restoredText = text
-                    .setMessage(0, Component.literal("[Private]"))
-                    .setMessage(1, Component.literal(watch.ownerName()));
+                SignText restoredText = text.asMutable()
+                    .setLine(0, Component.literal("[Private]"))
+                    .setLine(1, Component.literal(watch.ownerName()))
+                    .asImmutable();
 
-                signBlockEntity.setText(restoredText, true);
+                signBlockEntity.setText(restoredText, SignTextSlot.FRONT);
                 signBlockEntity.setChanged();
                 world.getChunkSource().blockChanged(watch.key().pos());
 
@@ -508,7 +511,7 @@ public class SimpleServerMod implements ModInitializer {
         Level world,
         BlockPos targetPos,
         Direction clickedSide,
-        SignItem signItem,
+        BlockItem signItem,
         boolean moreUsersSign
     ) {
         if (clickedSide == Direction.UP) {
@@ -524,7 +527,7 @@ public class SimpleServerMod implements ModInitializer {
             return PrivateSignPlacement.failed();
         }
 
-        BlockState signState = getWallSignBlock(((BlockItem) signItem).getBlock()).defaultBlockState()
+        BlockState signState = getWallSignBlock(signItem.getBlock()).defaultBlockState()
             .setValue(WallSignBlock.FACING, clickedSide);
 
         if (!world.setBlockAndUpdate(signPos, signState)) {
@@ -543,14 +546,14 @@ public class SimpleServerMod implements ModInitializer {
         ServerPlayer player,
         Level world,
         BlockPos signPos,
-        SignItem signItem,
+        BlockItem signItem,
         boolean moreUsersSign
     ) {
         if (!canPlaceWallSign(world, signPos)) {
             return PrivateSignPlacement.failed();
         }
 
-        BlockState signState = ((BlockItem) signItem).getBlock().defaultBlockState()
+        BlockState signState = signItem.getBlock().defaultBlockState()
             .setValue(StandingSignBlock.ROTATION, getStandingSignRotation(player));
 
         if (!world.setBlockAndUpdate(signPos, signState)) {
@@ -590,6 +593,9 @@ public class SimpleServerMod implements ModInitializer {
         if (standingSignBlock == Blocks.MANGROVE_SIGN) {
             return Blocks.MANGROVE_WALL_SIGN;
         }
+        if (standingSignBlock == Blocks.POPLAR_SIGN) {
+            return Blocks.POPLAR_WALL_SIGN;
+        }
         if (standingSignBlock == Blocks.BAMBOO_SIGN) {
             return Blocks.BAMBOO_WALL_SIGN;
         }
@@ -614,15 +620,15 @@ public class SimpleServerMod implements ModInitializer {
         SignBlockEntity signBlockEntity,
         boolean moreUsersSign
     ) {
-        SignText text = new SignText()
-            .setMessage(0, Component.literal(moreUsersSign ? "[More Users]" : "[Private]"));
+        SignText.Mutable text = SignText.EMPTY.asMutable()
+            .setLine(0, Component.literal(moreUsersSign ? "[More Users]" : "[Private]"));
 
         if (!moreUsersSign) {
-            text = text.setMessage(1, Component.literal(player.getName().getString()));
+            text.setLine(1, Component.literal(player.getName().getString()));
             writeSignUserUuid(signBlockEntity, player.getName().getString(), player.getUUID());
         }
 
-        signBlockEntity.setText(text, true);
+        signBlockEntity.setText(text.asImmutable(), SignTextSlot.FRONT);
         signBlockEntity.setChanged();
 
         if (world instanceof ServerLevel serverWorld) {
@@ -771,7 +777,7 @@ public class SimpleServerMod implements ModInitializer {
             return List.of();
         }
 
-        return readSignLines(signBlockEntity.getFrontText());
+        return readSignLines(signBlockEntity.getText(SignTextSlot.FRONT));
     }
 
     private static List<String> readSignLines(SignText signText) {
